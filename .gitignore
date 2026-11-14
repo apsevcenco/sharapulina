@@ -1,0 +1,8 @@
+node_modules/
+apps/*/node_modules/
+apps/*/dist/
+.vite/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
