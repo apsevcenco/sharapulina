@@ -1,0 +1,9 @@
+{
+  "name": "sharapulina",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "npm run dev --workspace=@sharapulina/web",
+    "build": "npm run build --workspace=@sharapulina/web"
+  }
+}
