@@ -73,6 +73,19 @@ async function readImage(request: IncomingMessage, maxBytes = 12 * 1024 * 1024):
   return Buffer.concat(chunks)
 }
 
+async function readWorkAsset(request: IncomingMessage, maxBytes = 16 * 1024 * 1024): Promise<Buffer> {
+  const chunks: Buffer[] = []
+  let size = 0
+  for await (const chunk of request) {
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+    size += bytes.length
+    if (size > maxBytes) throw new ApiError(413, 'Work files must be smaller than 16 MB.')
+    chunks.push(bytes)
+  }
+  if (!size) throw new ApiError(400, 'Choose a file to upload.')
+  return Buffer.concat(chunks)
+}
+
 async function requireAdmin(request: IncomingMessage) {
   if (!configured() || !adminClient || !authClient) throw new ApiError(503, 'The Supabase service is not configured.')
   const authorization = request.headers.authorization || ''
@@ -133,6 +146,84 @@ async function handle(request: IncomingMessage, response: ServerResponse) {
       .eq('locale', locale).order('page')
     if (error) { send(response, 503, { error: 'Site content is not available yet.' }); return }
     send(response, 200, { items: data || [] }); return
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/works') {
+    if (!configured() || !adminClient) { send(response, 503, { error: 'Content service is not configured.' }); return }
+    const locale = url.searchParams.get('locale')
+    if (!validLocale(locale)) { send(response, 400, { error: 'Invalid locale.' }); return }
+    const { data, error } = await adminClient.from('site_works')
+      .select('id,title_ru,title_fr,title_en,description_ru,description_fr,description_en,cover_url,file_url,file_name,year,sort_order')
+      .eq('published', true).order('sort_order').order('created_at')
+    if (error) { send(response, 503, { error: 'The works library is not available yet.' }); return }
+    const suffix = locale as 'ru' | 'fr' | 'en'
+    send(response, 200, { items: (data || []).map((item) => ({
+      id: item.id, title: item[`title_${suffix}`], description: item[`description_${suffix}`],
+      cover_url: item.cover_url, file_url: item.file_url, file_name: item.file_name, year: item.year,
+    })) }); return
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/admin/works') {
+    await requireAdmin(request)
+    if (!adminClient) throw new ApiError(503, 'The content service is not configured.')
+    const { data, error } = await adminClient.from('site_works')
+      .select('id,title_ru,title_fr,title_en,description_ru,description_fr,description_en,cover_url,file_url,file_name,year,sort_order,published')
+      .order('sort_order').order('created_at')
+    if (error) throw new ApiError(503, 'The works library is not available yet. Apply the works migration first.')
+    send(response, 200, { items: data || [] }); return
+  }
+
+  if (request.method === 'PUT' && url.pathname === '/api/admin/works') {
+    await requireAdmin(request)
+    if (!adminClient) throw new ApiError(503, 'The content service is not configured.')
+    const body = await readJson(request) as Record<string, unknown>
+    const row: Record<string, unknown> = {
+      title_ru: stringField(body.title_ru, 240, 'Russian title', true),
+      title_fr: stringField(body.title_fr, 240, 'French title', true),
+      title_en: stringField(body.title_en, 240, 'English title', true),
+      description_ru: stringField(body.description_ru, 2000, 'Russian description'),
+      description_fr: stringField(body.description_fr, 2000, 'French description'),
+      description_en: stringField(body.description_en, 2000, 'English description'),
+      cover_url: stringField(body.cover_url, 2048, 'cover URL', true),
+      file_url: stringField(body.file_url, 2048, 'PDF URL', true),
+      file_name: stringField(body.file_name, 240, 'file name', true),
+      year: Number.isInteger(body.year) && Number(body.year) >= 1000 && Number(body.year) <= 9999 ? Number(body.year) : 2026,
+      published: body.published !== false,
+      updated_at: new Date().toISOString(),
+    }
+    if (typeof body.id === 'string' && /^[0-9a-f-]{36}$/i.test(body.id)) row.id = body.id
+    const { data, error } = await adminClient.from('site_works').upsert(row).select().single()
+    if (error || !data) throw new ApiError(503, 'Could not save the work. Apply the works migration first.')
+    send(response, 200, { item: data }); return
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/admin/work-upload') {
+    await requireAdmin(request)
+    if (!adminClient) throw new ApiError(503, 'The media service is not configured.')
+    const kind = url.searchParams.get('kind')
+    const mime = (request.headers['content-type'] || '').split(';')[0].trim().toLowerCase()
+    const types: Record<string, { extension: string; limit: number }> = {
+      'image/jpeg': { extension: 'jpg', limit: 12 * 1024 * 1024 },
+      'image/png': { extension: 'png', limit: 12 * 1024 * 1024 },
+      'image/webp': { extension: 'webp', limit: 12 * 1024 * 1024 },
+      'image/avif': { extension: 'avif', limit: 12 * 1024 * 1024 },
+      'application/pdf': { extension: 'pdf', limit: 16 * 1024 * 1024 },
+    }
+    const type = types[mime]
+    if (!type || (kind === 'pdf' ? mime !== 'application/pdf' : kind !== 'cover' || mime === 'application/pdf')) {
+      throw new ApiError(415, kind === 'pdf' ? 'Choose a PDF file.' : 'Choose a JPG, PNG, WebP or AVIF cover image.')
+    }
+    const bytes = new Uint8Array(await readWorkAsset(request, type.limit))
+    let originalName = Array.isArray(request.headers['x-file-name']) ? request.headers['x-file-name'][0] : request.headers['x-file-name'] || 'work'
+    try { originalName = decodeURIComponent(originalName) } catch { /* Keep the encoded filename and sanitize below. */ }
+    const safeName = originalName.split(/[\\/]/).pop()?.replace(/[^\p{L}\p{N}._-]+/gu, '-').slice(0, 100) || 'work'
+    const path = `works/${Date.now()}-${randomUUID()}-${safeName}.${type.extension}`
+    const { error } = await adminClient.storage.from(bucket).upload(path, bytes, {
+      contentType: mime, cacheControl: '3600', upsert: false,
+    })
+    if (error) throw new ApiError(502, 'The work file could not be stored. Apply the storage migration first.')
+    const { data } = adminClient.storage.from(bucket).getPublicUrl(path)
+    send(response, 201, { url: data.publicUrl, path, file_name: safeName }); return
   }
 
   if (request.method === 'GET' && url.pathname === '/api/admin/content') {

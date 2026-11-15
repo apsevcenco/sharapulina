@@ -5,6 +5,7 @@ import { AdminPage } from './AdminPage'
 import './styles.css'
 
 type Route = Page | 'admin'
+type WorkCard = { id: string; title: string; description: string; cover_url: string; file_url: string; file_name: string; year: number }
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') || '/api'
 
@@ -17,6 +18,7 @@ function App() {
   const [locale, setLocale] = useState<Locale>('ru')
   const [activePage, setActivePage] = useState<Route>(normaliseHash)
   const [contentRows, setContentRows] = useState<SiteContentRow[]>(defaultSiteContent)
+  const [works, setWorks] = useState<WorkCard[]>([])
   const pageId: Page = activePage === 'admin' ? 'home' : activePage
   const active = pages.find((page) => page.id === pageId) ?? pages[0]
   const localized = copy[locale]
@@ -33,6 +35,15 @@ function App() {
       if (mounted && Array.isArray(payload.items) && payload.items.length) {
         setContentRows((current) => [...current.filter((row) => row.locale !== locale), ...payload.items!])
       }
+    }).catch(() => undefined)
+    return () => { mounted = false }
+  }, [locale])
+  useEffect(() => {
+    let mounted = true
+    fetch(`${apiBase}/works?locale=${locale}`).then(async (response) => {
+      if (!response.ok) return
+      const payload = await response.json() as { items?: WorkCard[] }
+      if (mounted && Array.isArray(payload.items)) setWorks(payload.items)
     }).catch(() => undefined)
     return () => { mounted = false }
   }, [locale])
@@ -67,6 +78,12 @@ function App() {
         <span className="deco-rule" aria-hidden="true"><i>◆</i></span>
         <h1>{activeContent?.title || fallbackContent.title}</h1>
         <p className="inner-page-intro">{activeContent?.body || fallbackContent.text}</p>
+        {activePage === 'works' && works.length > 0 && <div className="works-library" aria-label={locale === 'ru' ? 'Книги и проекты' : locale === 'fr' ? 'Livres et projets' : 'Books and projects'}>
+          {works.map((work) => <article className="work-card" key={work.id}>
+            <a className="work-cover" href={work.file_url} target="_blank" rel="noreferrer" aria-label={`${work.title} — PDF`}><img src={work.cover_url} alt={work.title} loading="lazy" /></a>
+            <div className="work-card-copy"><p className="work-meta"><span>{work.year}</span><i>◆</i>{locale === 'ru' ? 'ИЛЛЮСТРИРОВАННОЕ ИЗДАНИЕ' : locale === 'fr' ? 'ÉDITION ILLUSTRÉE' : 'ILLUSTRATED EDITION'}</p><h2>{work.title}</h2><p>{work.description}</p><a className="work-open" href={work.file_url} target="_blank" rel="noreferrer"><span>{locale === 'ru' ? 'Открыть книгу' : locale === 'fr' ? 'Ouvrir le livre' : 'Open the book'}</span><i>↗</i></a></div>
+          </article>)}
+        </div>}
         <button className="journal-link" onClick={() => navigate('home')}><span>{localized.backToHome}</span><i>↗</i></button>
       </div>
       <span className="inner-page-number" aria-hidden="true">{active.index}</span>
