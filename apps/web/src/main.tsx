@@ -30,7 +30,7 @@ function App() {
 
   return <main className="page-shell">
     <div className="grain" aria-hidden="true" />
-    <header className="site-header">
+    <header className={`site-header ${activePage === 'home' ? 'home-header' : ''}`}>
       <button className="monogram" onClick={() => navigate('home')} aria-label="На главную">HC</button>
       <button className="identity" onClick={() => navigate('home')}>HELLEN CHARAFoulina <span>—</span> <em>art & collections</em></button>
       <nav aria-label="Основная навигация">{pages.map((page) => <button className={activePage === page.id ? 'active' : ''} key={page.id} onClick={() => navigate(page.id)}>{page.label}</button>)}</nav>
@@ -38,18 +38,15 @@ function App() {
     </header>
     {activePage === 'home' ? <>
       <section className="hero" id="top">
-        <div className="hero-copy">
+        <div className="hero-copy hero-paper-menu">
           <button className="hero-brand" onClick={() => navigate('home')}>Hellen<br /><em>Charafoulina</em></button>
           <span className="hero-rule" aria-hidden="true" />
           <nav className="hero-menu" aria-label="Главное меню">
             {pages.map((page) => <button className={activePage === page.id ? 'active' : ''} key={page.id} onClick={() => navigate(page.id)}>{page.label}</button>)}
           </nav>
-          <p className="hero-note">Искусство · стиль · коллекции</p>
         </div>
         <figure className="hero-art"><img src="/images/art-nouveau-hero.png" alt="Женщина в зелёном родстере у здания в стиле ар-деко, ирисы и золотая модерновая рамка" /><figcaption>Art nouveau · art déco · личный архив</figcaption></figure>
-        <aside className="margin-note">01 <span /> Искусство не декор. Это свидетельство времени.</aside>
       </section>
-      <section className="menu-band" aria-label="Меню разделов">{pages.slice(1).map((page) => <button key={page.id} onClick={() => navigate(page.id)}>{page.label}</button>)}</section>
     </> : <section className="inner-page"><div className="inner-page-art"><img src="/images/art-nouveau-hero.png" alt="" /></div><p className="kicker">{active.index} · HELLEN CHARAFoulina</p><h1>{active.title}</h1><span className="ornament" aria-hidden="true">❦</span><p>{active.text}</p><button className="journal-link" onClick={() => navigate('home')}><span>Вернуться на главную</span><i>↗</i></button></section>}
   </main>
 }
