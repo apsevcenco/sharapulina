@@ -38,7 +38,14 @@ function App() {
     </header>
     {activePage === 'home' ? <>
       <section className="hero" id="top">
-        <div className="hero-copy"><p className="kicker">ИСКУССТВО · СТИЛЬ · КОЛЛЕКЦИИ</p><h1>{active.title.split('\n').map((line) => <span key={line}>{line}</span>)}</h1><span className="ornament" aria-hidden="true">❦</span><p className="intro">{active.text}</p><button className="journal-link" onClick={() => navigate('journal')}><span>{translations[locale]}</span><i>↗</i></button></div>
+        <div className="hero-copy">
+          <button className="hero-brand" onClick={() => navigate('home')}>Hellen<br /><em>Charafoulina</em></button>
+          <span className="hero-rule" aria-hidden="true" />
+          <nav className="hero-menu" aria-label="Главное меню">
+            {pages.map((page) => <button className={activePage === page.id ? 'active' : ''} key={page.id} onClick={() => navigate(page.id)}>{page.label}</button>)}
+          </nav>
+          <p className="hero-note">Искусство · стиль · коллекции</p>
+        </div>
         <figure className="hero-art"><img src="/images/art-nouveau-hero.png" alt="Женщина в зелёном родстере у здания в стиле ар-деко, ирисы и золотая модерновая рамка" /><figcaption>Art nouveau · art déco · личный архив</figcaption></figure>
         <aside className="margin-note">01 <span /> Искусство не декор. Это свидетельство времени.</aside>
       </section>
