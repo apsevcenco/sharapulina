@@ -70,6 +70,24 @@ function App() {
           <span>ART NOUVEAU</span><span>ART DÉCO</span><span>OBJETS D’ART</span><span>PROVENANCE</span>
         </div>
       </section>
+
+      <section className="editorial-grid" aria-label="Разделы сайта">
+        <a className="editorial-card journal-card" href="#journal">
+          <span>01 · JOURNAL</span>
+          <strong>Истории вещей,<br />которые пережили<br />своё время.</strong>
+          <i>Открыть записи ↗</i>
+        </a>
+        <a className="editorial-card archive-card" id="archive" href="#archive">
+          <span>02 · ARCHIVE</span>
+          <strong>Личный архив:<br />стили, мастера,<br />редкие предметы.</strong>
+          <i>Перейти в архив ↗</i>
+        </a>
+        <a className="editorial-card about-card" id="about" href="#about">
+          <span>03 · ABOUT</span>
+          <strong>Взгляд автора:<br />искусство — это<br />знание деталей.</strong>
+          <i>Об авторе ↗</i>
+        </a>
+      </section>
     </main>
   )
 }
