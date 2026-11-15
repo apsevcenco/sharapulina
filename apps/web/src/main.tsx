@@ -1,95 +1,50 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './styles.css'
 
 type Locale = 'ru' | 'fr' | 'en'
+type Page = 'home' | 'works' | 'collections' | 'about' | 'journal' | 'contacts'
 
-const copy: Record<Locale, { kicker: string; title: string; statement: string; cta: string }> = {
-  ru: {
-    kicker: 'ЗАПИСКИ ОБ ИСКУССТВЕ И КОЛЛЕКЦИОНИРОВАНИИ',
-    title: 'Искусство требует\nмедленного взгляда.',
-    statement: 'От текучей линии ар-нуво до безупречной геометрии ар-деко: здесь предметы читаются как портреты своего времени.',
-    cta: 'Открыть журнал',
-  },
-  fr: {
-    kicker: 'CARNETS D’ART ET DE COLLECTION',
-    title: 'L’art demande\nun regard lent.',
-    statement: 'De la ligne mouvante de l’Art nouveau à la géométrie de l’Art déco, chaque objet raconte son époque.',
-    cta: 'Ouvrir le journal',
-  },
-  en: {
-    kicker: 'NOTES ON ART AND COLLECTING',
-    title: 'Art asks for\na slower gaze.',
-    statement: 'From Art Nouveau’s living line to Art Deco’s poised geometry, each object is read as a portrait of its era.',
-    cta: 'Open the journal',
-  },
+const pages: Array<{ id: Page; label: string; index: string; title: string; text: string }> = [
+  { id: 'home', label: 'ГЛАВНАЯ', index: '01', title: 'Искусство требует\nмедленного взгляда.', text: 'От текучей линии ар-нуво до безупречной геометрии ар-деко: здесь предметы читаются как портреты своего времени.' },
+  { id: 'works', label: 'РАБОТЫ', index: '02', title: 'Работы', text: 'Авторские исследования, эссе и визуальные истории о стиле, формах и предметах искусства.' },
+  { id: 'collections', label: 'КОЛЛЕКЦИИ', index: '03', title: 'Коллекции', text: 'Отобранные предметы, редкие издания и небольшие частные собрания с вниманием к происхождению.' },
+  { id: 'about', label: 'О ХУДОЖНИЦЕ', index: '04', title: 'О художнице', text: 'Личный взгляд на искусство, где исторический контекст встречается с интуицией коллекционера.' },
+  { id: 'journal', label: 'ЖУРНАЛ', index: '05', title: 'Журнал', text: 'Заметки о декоративных искусствах, архитектуре, антиквариате и людях, создавших язык эпохи.' },
+  { id: 'contacts', label: 'КОНТАКТЫ', index: '06', title: 'Контакты', text: 'Для предложений о проектах, публикациях и частных коллекциях.' },
+]
+
+const translations: Record<Locale, string> = { ru: 'Открыть журнал', fr: 'Ouvrir le journal', en: 'Open the journal' }
+
+function normaliseHash(): Page {
+  const value = window.location.hash.replace('#/', '').replace('#', '') as Page
+  return pages.some((page) => page.id === value) ? value : 'home'
 }
 
 function App() {
   const [locale, setLocale] = useState<Locale>('ru')
-  const text = copy[locale]
+  const [activePage, setActivePage] = useState<Page>(normaliseHash)
+  const active = pages.find((page) => page.id === activePage) ?? pages[0]
+  useEffect(() => { const sync = () => setActivePage(normaliseHash()); window.addEventListener('hashchange', sync); return () => window.removeEventListener('hashchange', sync) }, [])
+  const navigate = (page: Page) => { window.location.hash = `/${page}`; window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
-  return (
-    <main className="page-shell">
-      <div className="grain" aria-hidden="true" />
-      <header className="site-header">
-        <a className="monogram" href="#top" aria-label="На главную">ES</a>
-          <p className="identity">ELEN SHARAFULLINA <span>—</span> <em>arts, objects & provenance</em></p>
-        <nav aria-label="Основная навигация">
-          <a href="#journal">Журнал</a>
-          <a href="#archive">Архив</a>
-          <a href="#about">Об авторе</a>
-        </nav>
-        <div className="locales" aria-label="Язык сайта">
-          {(['ru', 'fr', 'en'] as Locale[]).map((item) => (
-            <button key={item} className={locale === item ? 'active' : ''} onClick={() => setLocale(item)}>
-              {item.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      </header>
-
+  return <main className="page-shell">
+    <div className="grain" aria-hidden="true" />
+    <header className="site-header">
+      <button className="monogram" onClick={() => navigate('home')} aria-label="На главную">HC</button>
+      <button className="identity" onClick={() => navigate('home')}>HELLEN CHARAFoulina <span>—</span> <em>art & collections</em></button>
+      <nav aria-label="Основная навигация">{pages.map((page) => <button className={activePage === page.id ? 'active' : ''} key={page.id} onClick={() => navigate(page.id)}>{page.label}</button>)}</nav>
+      <div className="locales" aria-label="Язык сайта">{(['ru', 'fr', 'en'] as Locale[]).map((item) => <button key={item} className={locale === item ? 'active' : ''} onClick={() => setLocale(item)}>{item.toUpperCase()}</button>)}</div>
+    </header>
+    {activePage === 'home' ? <>
       <section className="hero" id="top">
-        <div className="hero-copy">
-          <p className="kicker">{text.kicker}</p>
-          <h1>{text.title.split('\n').map((line) => <span key={line}>{line}</span>)}</h1>
-          <span className="ornament" aria-hidden="true">❦</span>
-          <p className="intro">{text.statement}</p>
-          <a className="journal-link" href="#journal"><span>{text.cta}</span><i>↗</i></a>
-        </div>
-        <figure className="hero-art">
-          <img src="/images/art-nouveau-hero.png" alt="Ар-нуво натюрморт с редкими книгами, ирисами и винтажным календарём" />
-          <figcaption>Art nouveau · art déco · личный архив</figcaption>
-        </figure>
+        <div className="hero-copy"><p className="kicker">ИСКУССТВО · СТИЛЬ · КОЛЛЕКЦИИ</p><h1>{active.title.split('\n').map((line) => <span key={line}>{line}</span>)}</h1><span className="ornament" aria-hidden="true">❦</span><p className="intro">{active.text}</p><button className="journal-link" onClick={() => navigate('journal')}><span>{translations[locale]}</span><i>↗</i></button></div>
+        <figure className="hero-art"><img src="/images/art-nouveau-hero.png" alt="Женщина в зелёном родстере у здания в стиле ар-деко, ирисы и золотая модерновая рамка" /><figcaption>Art nouveau · art déco · личный архив</figcaption></figure>
         <aside className="margin-note">01 <span /> Искусство не декор. Это свидетельство времени.</aside>
       </section>
-
-      <section className="manifesto" id="journal">
-        <p>Узнавать подлинное — значит замечать линию, свет, происхождение и руку мастера.</p>
-        <div className="disciplines">
-          <span>ART NOUVEAU</span><span>ART DÉCO</span><span>OBJETS D’ART</span><span>PROVENANCE</span>
-        </div>
-      </section>
-
-      <section className="editorial-grid" aria-label="Разделы сайта">
-        <a className="editorial-card journal-card" href="#journal">
-          <span>01 · JOURNAL</span>
-          <strong>Истории вещей,<br />которые пережили<br />своё время.</strong>
-          <i>Открыть записи ↗</i>
-        </a>
-        <a className="editorial-card archive-card" id="archive" href="#archive">
-          <span>02 · ARCHIVE</span>
-          <strong>Личный архив:<br />стили, мастера,<br />редкие предметы.</strong>
-          <i>Перейти в архив ↗</i>
-        </a>
-        <a className="editorial-card about-card" id="about" href="#about">
-          <span>03 · ABOUT</span>
-          <strong>Взгляд автора:<br />искусство — это<br />знание деталей.</strong>
-          <i>Об авторе ↗</i>
-        </a>
-      </section>
-    </main>
-  )
+      <section className="menu-band" aria-label="Меню разделов">{pages.slice(1).map((page) => <button key={page.id} onClick={() => navigate(page.id)}>{page.label}</button>)}</section>
+    </> : <section className="inner-page"><div className="inner-page-art"><img src="/images/art-nouveau-hero.png" alt="" /></div><p className="kicker">{active.index} · HELLEN CHARAFoulina</p><h1>{active.title}</h1><span className="ornament" aria-hidden="true">❦</span><p>{active.text}</p><button className="journal-link" onClick={() => navigate('home')}><span>Вернуться на главную</span><i>↗</i></button></section>}
+  </main>
 }
 
 createRoot(document.getElementById('root')!).render(<App />)
