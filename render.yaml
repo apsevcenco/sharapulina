@@ -19,8 +19,6 @@ projects:
                 sync: false
               - key: WEB_ORIGIN
                 value: ""
-              - key: OPENAI_API_KEY
-                sync: false
               - key: VITE_SUPABASE_URL
                 sync: false
               - key: VITE_SUPABASE_PUBLISHABLE_KEY
